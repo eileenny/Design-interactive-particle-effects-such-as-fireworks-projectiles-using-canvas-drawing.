@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firework</title>
+    <style>
+         canvas {
+             background-color: rgb(70, 68, 68);
+             border: solid rgb(106, 245, 153) 5px;
+         }
+
+    </style>
+</head>
+<body>
+    <canvas id="game" width="1280" height="720"></canvas>
+    <script>
+        /** @type HTMLCanvasElement */
+        const canvas = document.querySelector('#game');
+        const ctx = canvas.getContext('2d')
+        canvas.width= innerWidth;
+        canvas.height= innerHeight;
+
+        class Particle {
+            gravity = 0.1;
+            constructor(x=0,y=0,r=50,color={r:255,g:0,b:0,alpha:1},v={dx:0,dy:0},active=true) {
+                this.x = x;
+                this.y = y;
+                this.r = r;
+                this.color = color
+                this.v = v;
+                this.active=active;
+            }
+            draw(elapsedTime) {
+                if(this.active){
+                    ctx.fillStyle = `rgba(${this.color.r},${this.color.g},${this.color.b},${this.color.alpha})`;
+                    ctx.beginPath()
+                    ctx.arc(this.x,this.y,this.r,0,Math.PI*2,true)
+                    ctx.closePath()
+                    ctx.fill()
+                    ctx.save()
+                    ctx.translate(this.x,this.y)
+                    ctx.rotate(elapsedTime)
+                    ctx.translate(-this.x,-this.y)
+                    this.drawStar(this.x,this.y,6,this.r,this.r/2)
+                    ctx.restore()
+                }    
+            }
+              
+            drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+                let step = Math.PI / spikes;
+                let angle = Math.PI * 3 / 2;
+                var x = 0;
+                var y = 0;
+                ctx.beginPath()
+                ctx.moveTo(cx, cy - outerRadius);
+                for (let i = 0; i < spikes; i++) {
+                    x = cx + Math.cos(angle) * outerRadius;
+                    y = cy + Math.sin(angle) * outerRadius;
+                    ctx.lineTo(x, y)
+                    angle += step
+                    x = cx + Math.cos(angle) * innerRadius;
+                    y = cy + Math.sin(angle) * innerRadius;
+                    ctx.lineTo(x, y)
+                    angle += step
+                }
+                ctx.closePath();
+                ctx.strokeStyle = "blue"
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = "black"
+                ctx.shadowOffsetX = 5;
+                ctx.shadowOffsetY = 5;
+                ctx.stroke();
+                ctx.fill()
+            }
+            update(elapsedTime){
+                this.v.dy +=this.gravity*elapsedTime;
+                this.x += this.v.dx*elapsedTime;
+                this.y += this.v.dy*elapsedTime;
+                this.r = Math.abs(this.r - 0.1);         
+                // size getting small
+                this.color.alpha = (this.color.alpha > 0.0001) ? this.color.alpha-0.0001: 0;
+              
+                if (this.r <= 0.05) {
+                    this.active = false;
+                }
+            }
+        }
+
+        function random(min,max){
+            return min+Math.floor((max-min)*Math.random())
+        }
+        
+        class ParticleSystem {
+            
+            particles=[];
+            constructor(x,y,number) {   
+                this.x = x;
+                this.y = y;        
+                this.addParticles(x,y,number);
+            }
+
+            addParticles(x,y,number){
+                for(let i = 0; i < number;i++) {
+                    let p ={
+                        x:x,
+                        y:y,
+                        r:random(1,16),
+                        color:{
+                            r: random(0,255),
+                            g: random(0,255),
+                            b: random(0,255),
+                            alpha: (Math.random()*0.5 +0.5) 
+                        },
+                        v:{
+                            dx: random(0,Math.floor(i*10/number)),
+                            dy: random(0,-Math.floor(i*10/number))
+                        },
+                        active:true
+                    }
+                   
+                    let particle = new Particle(p.x,p.y,p.r,p.color,p.v,p.active)
+                    this.particles.push(particle)  
+                }
+            }
+           
+            animate(elapsedTime){
+                for (let particle of this.particles) {
+                    particle.update(elapsedTime)
+                    particle.draw(elapsedTime)
+                }
+                for(let i=0;i<this.particles.length;i++){
+                    if (!this.particles[i].active)
+                       this.particles.splice(i,1)  
+                }   
+            }        
+        }
+       
+        canvas.addEventListener('click', (evt) => {
+            let x = evt.clientX - canvas.offsetLeft;
+            let y =  evt.clientY-canvas.offsetTop;
+            ps.addParticles(x,y,random(300,500))
+            
+        })
+        canvas.addEventListener('mousemove', (evt) => {
+            let x = evt.clientX - canvas.offsetLeft;
+            let y =  evt.clientY-canvas.offsetTop;
+            ps.addParticles(x,y,random(1,3))
+            
+        })
+    
+        let side= 20;
+        let r = 400;
+        var ps = new ParticleSystem(canvas.width/2,canvas.height/2,random(2,5));
+        for (let i = 0 ; i< side;i++){
+            setTimeout(()=>{ ps.addParticles(
+                Math.floor(canvas.width/2+ r * Math.cos(2*i*Math.PI/side)),
+                Math.floor(canvas.height/2+ r * Math.sin(2*i*Math.PI/side)),
+            random(10,20))},i*200);
+        }
+        var elapsedTime = 0;
+        function animate(){
+            let startTime = performance.now();
+            ctx.fillStyle="rgba(0,0,0,0.1)";
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            requestAnimationFrame(animate)
+            ps.animate(elapsedTime);
+            elapsedTime = performance.now() - startTime;             
+        }
+        animate();
+        </script>
+    </body>
+</html>
